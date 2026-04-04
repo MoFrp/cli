@@ -12,9 +12,6 @@ fi
 
 echo "Package version: $VERSION"
 
-# cross_compiles
-make -f ./Makefile.cross-compiles VERSION=$VERSION
-
 rm -rf ./release/packages
 mkdir -p ./release/packages
 

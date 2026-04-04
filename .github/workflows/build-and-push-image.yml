@@ -47,12 +47,12 @@ jobs:
 
       - name: Prepare Image Tags
         run: |
-          # 移除 v 前缀（如果有）
           VERSION=${{ env.VERSION }}
           VERSION=${VERSION#v}
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "TAG_FRPC=fatedier/frpc:${VERSION}" >> $GITHUB_ENV
-          echo "TAG_FRPC_GPR=ghcr.io/fatedier/frpc:${VERSION}" >> $GITHUB_ENV
+          echo "TAG_FRPC=${REPO_OWNER}/frpc:${VERSION}" >> $GITHUB_ENV
+          echo "TAG_FRPC_GPR=ghcr.io/${REPO_OWNER}/frpc:${VERSION}" >> $GITHUB_ENV
 
       - name: Build and push frpc
         uses: docker/build-push-action@v7

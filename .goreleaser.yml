@@ -10,9 +10,6 @@ checksum:
     - glob: ./release/packages/*
 
 release:
-  github:
-    owner: fatedier
-    name: frp
   draft: false
   replace_existing_draft: true
   replace_existing_artifacts: true
