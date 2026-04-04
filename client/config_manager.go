@@ -108,6 +108,38 @@ func (m *serviceConfigManager) StoreEnabled() bool {
 	return storeSource != nil
 }
 
+func (m *serviceConfigManager) GetProxyConfig(name string) (v1.ProxyConfigurer, bool) {
+	if name == "" {
+		return nil, false
+	}
+
+	m.svr.cfgMu.RLock()
+	for _, cfg := range m.svr.proxyCfgs {
+		if cfg.GetBaseConfig().Name == name {
+			m.svr.cfgMu.RUnlock()
+			return cfg, true
+		}
+	}
+	m.svr.cfgMu.RUnlock()
+	return nil, false
+}
+
+func (m *serviceConfigManager) GetVisitorConfig(name string) (v1.VisitorConfigurer, bool) {
+	if name == "" {
+		return nil, false
+	}
+
+	m.svr.cfgMu.RLock()
+	for _, cfg := range m.svr.visitorCfgs {
+		if cfg.GetBaseConfig().Name == name {
+			m.svr.cfgMu.RUnlock()
+			return cfg, true
+		}
+	}
+	m.svr.cfgMu.RUnlock()
+	return nil, false
+}
+
 func (m *serviceConfigManager) ListStoreProxies() ([]v1.ProxyConfigurer, error) {
 	storeSource, err := m.storeSourceOrError()
 	if err != nil {
@@ -133,11 +165,12 @@ func (m *serviceConfigManager) GetStoreProxy(name string) (v1.ProxyConfigurer, e
 	return cfg, nil
 }
 
-func (m *serviceConfigManager) CreateStoreProxy(cfg v1.ProxyConfigurer) error {
+func (m *serviceConfigManager) CreateStoreProxy(cfg v1.ProxyConfigurer) (v1.ProxyConfigurer, error) {
 	if err := m.validateStoreProxyConfigurer(cfg); err != nil {
-		return fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
+		return nil, fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
 	}
 
+	var createdCfg v1.ProxyConfigurer
 	if err := m.withStoreMutationAndReload(func(storeSource *source.StoreSource) error {
 		if err := storeSource.AddProxy(cfg); err != nil {
 			if errors.Is(err, source.ErrAlreadyExists) {
@@ -145,30 +178,32 @@ func (m *serviceConfigManager) CreateStoreProxy(cfg v1.ProxyConfigurer) error {
 			}
 			return err
 		}
+		createdCfg = cfg
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("store: created proxy %q", cfg.GetBaseConfig().Name)
-	return nil
+	return createdCfg, nil
 }
 
-func (m *serviceConfigManager) UpdateStoreProxy(name string, cfg v1.ProxyConfigurer) error {
+func (m *serviceConfigManager) UpdateStoreProxy(name string, cfg v1.ProxyConfigurer) (v1.ProxyConfigurer, error) {
 	if name == "" {
-		return fmt.Errorf("%w: proxy name is required", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: proxy name is required", configmgmt.ErrInvalidArgument)
 	}
 	if cfg == nil {
-		return fmt.Errorf("%w: invalid proxy config: type is required", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: invalid proxy config: type is required", configmgmt.ErrInvalidArgument)
 	}
 	bodyName := cfg.GetBaseConfig().Name
 	if bodyName != name {
-		return fmt.Errorf("%w: proxy name in URL must match name in body", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: proxy name in URL must match name in body", configmgmt.ErrInvalidArgument)
 	}
 	if err := m.validateStoreProxyConfigurer(cfg); err != nil {
-		return fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
+		return nil, fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
 	}
 
+	var updatedCfg v1.ProxyConfigurer
 	if err := m.withStoreMutationAndReload(func(storeSource *source.StoreSource) error {
 		if err := storeSource.UpdateProxy(cfg); err != nil {
 			if errors.Is(err, source.ErrNotFound) {
@@ -176,13 +211,14 @@ func (m *serviceConfigManager) UpdateStoreProxy(name string, cfg v1.ProxyConfigu
 			}
 			return err
 		}
+		updatedCfg = cfg
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("store: updated proxy %q", name)
-	return nil
+	return updatedCfg, nil
 }
 
 func (m *serviceConfigManager) DeleteStoreProxy(name string) error {
@@ -231,11 +267,12 @@ func (m *serviceConfigManager) GetStoreVisitor(name string) (v1.VisitorConfigure
 	return cfg, nil
 }
 
-func (m *serviceConfigManager) CreateStoreVisitor(cfg v1.VisitorConfigurer) error {
+func (m *serviceConfigManager) CreateStoreVisitor(cfg v1.VisitorConfigurer) (v1.VisitorConfigurer, error) {
 	if err := m.validateStoreVisitorConfigurer(cfg); err != nil {
-		return fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
+		return nil, fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
 	}
 
+	var createdCfg v1.VisitorConfigurer
 	if err := m.withStoreMutationAndReload(func(storeSource *source.StoreSource) error {
 		if err := storeSource.AddVisitor(cfg); err != nil {
 			if errors.Is(err, source.ErrAlreadyExists) {
@@ -243,30 +280,32 @@ func (m *serviceConfigManager) CreateStoreVisitor(cfg v1.VisitorConfigurer) erro
 			}
 			return err
 		}
+		createdCfg = cfg
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("store: created visitor %q", cfg.GetBaseConfig().Name)
-	return nil
+	return createdCfg, nil
 }
 
-func (m *serviceConfigManager) UpdateStoreVisitor(name string, cfg v1.VisitorConfigurer) error {
+func (m *serviceConfigManager) UpdateStoreVisitor(name string, cfg v1.VisitorConfigurer) (v1.VisitorConfigurer, error) {
 	if name == "" {
-		return fmt.Errorf("%w: visitor name is required", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: visitor name is required", configmgmt.ErrInvalidArgument)
 	}
 	if cfg == nil {
-		return fmt.Errorf("%w: invalid visitor config: type is required", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: invalid visitor config: type is required", configmgmt.ErrInvalidArgument)
 	}
 	bodyName := cfg.GetBaseConfig().Name
 	if bodyName != name {
-		return fmt.Errorf("%w: visitor name in URL must match name in body", configmgmt.ErrInvalidArgument)
+		return nil, fmt.Errorf("%w: visitor name in URL must match name in body", configmgmt.ErrInvalidArgument)
 	}
 	if err := m.validateStoreVisitorConfigurer(cfg); err != nil {
-		return fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
+		return nil, fmt.Errorf("%w: validation error: %v", configmgmt.ErrInvalidArgument, err)
 	}
 
+	var updatedCfg v1.VisitorConfigurer
 	if err := m.withStoreMutationAndReload(func(storeSource *source.StoreSource) error {
 		if err := storeSource.UpdateVisitor(cfg); err != nil {
 			if errors.Is(err, source.ErrNotFound) {
@@ -274,13 +313,14 @@ func (m *serviceConfigManager) UpdateStoreVisitor(name string, cfg v1.VisitorCon
 			}
 			return err
 		}
+		updatedCfg = cfg
 		return nil
 	}); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("store: updated visitor %q", name)
-	return nil
+	return updatedCfg, nil
 }
 
 func (m *serviceConfigManager) DeleteStoreVisitor(name string) error {

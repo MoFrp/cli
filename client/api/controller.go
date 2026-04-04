@@ -230,7 +230,7 @@ func (c *Controller) CreateStoreProxy(ctx *httppkg.Context) (any, error) {
 		return nil, httppkg.NewError(http.StatusBadRequest, "invalid proxy config: type is required")
 	}
 
-	if err := c.manager.CreateStoreProxy(typed.ProxyConfigurer); err != nil {
+	if _, err := c.manager.CreateStoreProxy(typed.ProxyConfigurer); err != nil {
 		return nil, c.toHTTPError(err)
 	}
 	return nil, nil
@@ -256,7 +256,7 @@ func (c *Controller) UpdateStoreProxy(ctx *httppkg.Context) (any, error) {
 		return nil, httppkg.NewError(http.StatusBadRequest, "invalid proxy config: type is required")
 	}
 
-	if err := c.manager.UpdateStoreProxy(name, typed.ProxyConfigurer); err != nil {
+	if _, err := c.manager.UpdateStoreProxy(name, typed.ProxyConfigurer); err != nil {
 		return nil, c.toHTTPError(err)
 	}
 	return nil, nil
@@ -333,7 +333,7 @@ func (c *Controller) CreateStoreVisitor(ctx *httppkg.Context) (any, error) {
 		return nil, httppkg.NewError(http.StatusBadRequest, "invalid visitor config: type is required")
 	}
 
-	if err := c.manager.CreateStoreVisitor(typed.VisitorConfigurer); err != nil {
+	if _, err := c.manager.CreateStoreVisitor(typed.VisitorConfigurer); err != nil {
 		return nil, c.toHTTPError(err)
 	}
 	return nil, nil
@@ -359,7 +359,7 @@ func (c *Controller) UpdateStoreVisitor(ctx *httppkg.Context) (any, error) {
 		return nil, httppkg.NewError(http.StatusBadRequest, "invalid visitor config: type is required")
 	}
 
-	if err := c.manager.UpdateStoreVisitor(name, typed.VisitorConfigurer); err != nil {
+	if _, err := c.manager.UpdateStoreVisitor(name, typed.VisitorConfigurer); err != nil {
 		return nil, c.toHTTPError(err)
 	}
 	return nil, nil

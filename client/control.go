@@ -50,6 +50,8 @@ type SessionContext struct {
 	Connector Connector
 	// Virtual net controller
 	VnetController *vnet.Controller
+	// ConnectPublic is the public address that can be used to access the tunnel.
+	ConnectPublic string
 }
 
 type Control struct {

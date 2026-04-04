@@ -16,9 +16,28 @@ package v1
 
 import (
 	"maps"
+	"sync"
 
 	"github.com/fatedier/frp/pkg/util/util"
 )
+
+var (
+	DisallowUnknownFields   = false
+	DisallowUnknownFieldsMu sync.Mutex
+)
+
+// WithDisallowUnknownFields temporarily overrides typed config JSON strictness.
+// It restores the previous value before returning.
+func WithDisallowUnknownFields(disallow bool, fn func() error) error {
+	DisallowUnknownFieldsMu.Lock()
+	prev := DisallowUnknownFields
+	DisallowUnknownFields = disallow
+	defer func() {
+		DisallowUnknownFields = prev
+		DisallowUnknownFieldsMu.Unlock()
+	}()
+	return fn()
+}
 
 type AuthScope string
 

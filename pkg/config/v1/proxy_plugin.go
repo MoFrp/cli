@@ -114,6 +114,28 @@ func (o *HTTPProxyPluginOptions) Clone() ClientPluginOptions {
 	return &out
 }
 
+type AutoTLSOptions struct {
+	Enable bool `json:"enable,omitempty"`
+	// Contact email for certificate expiration and important notices.
+	Email string `json:"email,omitempty"`
+	// Directory used to cache ACME account and certificates.
+	CacheDir string `json:"cacheDir,omitempty"`
+	// ACME directory URL, e.g. Let's Encrypt staging/prod endpoint.
+	CADirURL string `json:"caDirURL,omitempty"`
+	// Restrict certificate issuance to the listed domains.
+	HostAllowList []string `json:"hostAllowList,omitempty"`
+}
+
+func (o *AutoTLSOptions) Clone() *AutoTLSOptions {
+	if o == nil {
+		return nil
+	}
+	out := *o
+	out.HostAllowList = make([]string, len(o.HostAllowList))
+	copy(out.HostAllowList, o.HostAllowList)
+	return &out
+}
+
 type HTTPS2HTTPPluginOptions struct {
 	Type              string           `json:"type,omitempty"`
 	LocalAddr         string           `json:"localAddr,omitempty"`
@@ -122,6 +144,7 @@ type HTTPS2HTTPPluginOptions struct {
 	EnableHTTP2       *bool            `json:"enableHTTP2,omitempty"`
 	CrtPath           string           `json:"crtPath,omitempty"`
 	KeyPath           string           `json:"keyPath,omitempty"`
+	AutoTLS           *AutoTLSOptions  `json:"autoTLS,omitempty"`
 }
 
 func (o *HTTPS2HTTPPluginOptions) Complete() {
@@ -135,6 +158,7 @@ func (o *HTTPS2HTTPPluginOptions) Clone() ClientPluginOptions {
 	out := *o
 	out.RequestHeaders = o.RequestHeaders.Clone()
 	out.EnableHTTP2 = util.ClonePtr(o.EnableHTTP2)
+	out.AutoTLS = o.AutoTLS.Clone()
 	return &out
 }
 
@@ -146,6 +170,7 @@ type HTTPS2HTTPSPluginOptions struct {
 	EnableHTTP2       *bool            `json:"enableHTTP2,omitempty"`
 	CrtPath           string           `json:"crtPath,omitempty"`
 	KeyPath           string           `json:"keyPath,omitempty"`
+	AutoTLS           *AutoTLSOptions  `json:"autoTLS,omitempty"`
 }
 
 func (o *HTTPS2HTTPSPluginOptions) Complete() {
@@ -159,6 +184,7 @@ func (o *HTTPS2HTTPSPluginOptions) Clone() ClientPluginOptions {
 	out := *o
 	out.RequestHeaders = o.RequestHeaders.Clone()
 	out.EnableHTTP2 = util.ClonePtr(o.EnableHTTP2)
+	out.AutoTLS = o.AutoTLS.Clone()
 	return &out
 }
 
@@ -230,10 +256,11 @@ func (o *UnixDomainSocketPluginOptions) Clone() ClientPluginOptions {
 }
 
 type TLS2RawPluginOptions struct {
-	Type      string `json:"type,omitempty"`
-	LocalAddr string `json:"localAddr,omitempty"`
-	CrtPath   string `json:"crtPath,omitempty"`
-	KeyPath   string `json:"keyPath,omitempty"`
+	Type      string          `json:"type,omitempty"`
+	LocalAddr string          `json:"localAddr,omitempty"`
+	CrtPath   string          `json:"crtPath,omitempty"`
+	KeyPath   string          `json:"keyPath,omitempty"`
+	AutoTLS   *AutoTLSOptions `json:"autoTLS,omitempty"`
 }
 
 func (o *TLS2RawPluginOptions) Complete() {}
@@ -243,6 +270,7 @@ func (o *TLS2RawPluginOptions) Clone() ClientPluginOptions {
 		return nil
 	}
 	out := *o
+	out.AutoTLS = o.AutoTLS.Clone()
 	return &out
 }
 

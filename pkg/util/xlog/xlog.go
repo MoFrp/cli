@@ -112,5 +112,5 @@ func (l *Logger) Debugf(format string, v ...any) {
 }
 
 func (l *Logger) Tracef(format string, v ...any) {
-	log.Logger.Tracef(l.prefixString+format, v...)
+	log.Tracef(l.prefixString+format, v...)
 }
