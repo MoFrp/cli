@@ -50,7 +50,9 @@ jobs:
           VERSION=${{ env.VERSION }}
           VERSION=${VERSION#v}
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          BUILD_DATE=$(date -u +"%y%m%d")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
           echo "TAG_FRPC=${REPO_OWNER}/frpc:${VERSION}" >> $GITHUB_ENV
           echo "TAG_FRPC_GPR=ghcr.io/${REPO_OWNER}/frpc:${VERSION}" >> $GITHUB_ENV
 
@@ -64,7 +66,7 @@ jobs:
           build-args: |
             VERSION=${{ env.VERSION }}
             COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
           tags: |
             ${{ env.TAG_FRPC }}
             ${{ env.TAG_FRPC_GPR }}
