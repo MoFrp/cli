@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., 0.68.1)'
+        description: 'Release version (e.g., 0.68.1 or v0.68.1)'
         required: true
         default: ''
         type: string
@@ -12,8 +12,6 @@ on:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ github.event.inputs.version || '0.68.1' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -31,23 +29,34 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Set version
+        id: version
+        run: |
+          INPUT_VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$INPUT_VERSION" ]; then
+            INPUT_VERSION="0.68.1"
+          fi
+          VERSION="${INPUT_VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
       - name: Create tag
         run: |
-          git tag -a v${{ env.VERSION }} -m "Release v${{ env.VERSION }}"
-          git push origin v${{ env.VERSION }}
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin "${{ steps.version.outputs.tag }}"
 
       - name: Build frpc
         run: |
-          make frpc VERSION=${{ env.VERSION }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
+          make frpc VERSION=${{ steps.version.outputs.version }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
 
       - name: Cross compile frpc (parallel)
         run: |
-          make -f ./Makefile.cross-compiles -j$(nproc) VERSION=${{ env.VERSION }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
+          make -f ./Makefile.cross-compiles -j$(nproc) VERSION=${{ steps.version.outputs.version }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
 
       - name: Package frpc
         run: |
           chmod +x ./package.sh
-          ./package.sh ${{ env.VERSION }}
+          ./package.sh ${{ steps.version.outputs.version }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -60,6 +69,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: frpc-${{ env.VERSION }}
+          name: frpc-${{ steps.version.outputs.version }}
           path: release/packages/
           retention-days: 30
