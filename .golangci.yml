@@ -5,6 +5,7 @@ run:
   build-tags:
   - integ
   - integfuzz
+  - noweb
 linters:
   default: none
   enable:
