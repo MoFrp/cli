@@ -19,7 +19,8 @@ MoFrp 是基于 [frp](https://github.com/fatedier/frp) 的内网穿透服务客�
 
 ## 下载
 
-前往 [Releases](https://github.com/mofrp/cli/releases) 页面下载对应平台的二进制文件。
+- 二进制文件：[Releases](https://github.com/mofrp/cli/releases)
+- Docker 镜像：[Docker Hub](https://hub.docker.com/r/mofrp/cli)
 
 ## 使用
 
@@ -38,6 +39,13 @@ token 从 MoFrp 控制面板获取，格式为 `隧道ID:密钥`。
 ```
 
 配置文件参考 [frp 官方文档](https://gofrp.org/zh-cn/docs/)。
+
+### Docker
+
+```bash
+docker pull mofrp/cli
+docker run --rm mofrp/cli -t <token>
+```
 
 ## 致谢
 

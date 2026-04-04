@@ -19,7 +19,8 @@ Some implementations are referenced from [LoliaFrp](https://github.com/Lolia-FRP
 
 ## Download
 
-Download the binary for your platform from the [Releases](https://github.com/mofrp/cli/releases) page.
+- Binary: [Releases](https://github.com/mofrp/cli/releases)
+- Docker Image: [Docker Hub](https://hub.docker.com/r/mofrp/cli)
 
 ## Usage
 
@@ -38,6 +39,13 @@ Get the token from MoFrp dashboard, format: `TunnelID:SecretKey`.
 ```
 
 See [frp documentation](https://gofrp.org/docs/) for configuration.
+
+### Docker
+
+```bash
+docker pull mofrp/cli
+docker run --rm mofrp/cli -t <token>
+```
 
 ## Credits
 
