@@ -1,6 +1,10 @@
 export PATH := $(PATH):`go env GOPATH`/bin
 export GO111MODULE=on
-LDFLAGS := -s -w
+
+VERSION ?= 0.68.1
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE ?= $(shell date -u +"%y%m%d")
+LDFLAGS := -s -w -X github.com/fatedier/frp/pkg/util/version.version=$(VERSION) -X github.com/fatedier/frp/pkg/util/version.commit=$(COMMIT) -X github.com/fatedier/frp/pkg/util/version.buildDate=$(BUILD_DATE)
 
 .PHONY: env fmt frpc clean
 

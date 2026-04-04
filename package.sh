@@ -1,14 +1,25 @@
 #!/bin/bash
 set -e
 
-frp_version=$(cat ./version)
-echo "build version: $frp_version"
+# 接受版本号参数，如果没有则尝试从 git tag 或 version 文件获取
+VERSION=${1:-}
+if [ -z "$VERSION" ]; then
+    VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+fi
+if [ -z "$VERSION" ]; then
+    VERSION=$(cat ./version 2>/dev/null || echo "0.68.1")
+fi
+
+echo "Package version: $VERSION"
+
+# cross_compiles
+make -f ./Makefile.cross-compiles VERSION=$VERSION
 
 rm -rf ./release/packages
 mkdir -p ./release/packages
 
 os_all='linux windows darwin freebsd openbsd android'
-arch_all='386 amd64 arm arm64 mips64 mips64le mips mipsle riscv64 loong64'
+arch_all='amd64 arm arm64 mips64 mips64le mips mipsle riscv64 loong64'
 extra_all='_ hf'
 
 cd ./release
@@ -20,8 +31,8 @@ for os in $os_all; do
             if [ "x${extra}" != x"_" ]; then
                 suffix="${os}_${arch}_${extra}"
             fi
-            frp_dir_name="frpc_${frp_version}_${suffix}"
-            frp_path="./packages/frpc_${frp_version}_${suffix}"
+            frp_dir_name="frpc_${VERSION}_${suffix}"
+            frp_path="./packages/frpc_${VERSION}_${suffix}"
 
             if [ "x${os}" = x"windows" ]; then
                 if [ ! -f "./frpc_${os}_${arch}.exe" ]; then

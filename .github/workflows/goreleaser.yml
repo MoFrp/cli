@@ -2,10 +2,20 @@ name: goreleaser
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.68.1)'
+        required: true
+        default: ''
+        type: string
 
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ github.event.inputs.version || '0.68.1' }}
+      COMMIT: ${{ github.sha }}
+      BUILD_DATE: ${{ github.event.head_commit.timestamp }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -16,17 +26,19 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25'
+
       - name: Build frpc
         run: |
-          make frpc
+          make frpc VERSION=${{ env.VERSION }} COMMIT=${{ env.COMMIT }} BUILD_DATE=${{ env.BUILD_DATE }}
 
       - name: Cross compile frpc
         run: |
-          make -f ./Makefile.cross-compiles
+          make -f ./Makefile.cross-compiles VERSION=${{ env.VERSION }} COMMIT=${{ env.COMMIT }} BUILD_DATE=${{ env.BUILD_DATE }}
 
       - name: Package frpc
         run: |
-          ./package.sh
+          chmod +x ./package.sh
+          ./package.sh ${{ env.VERSION }}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -35,3 +47,10 @@ jobs:
           args: release --clean --release-notes=./Release.md
         env:
           GITHUB_TOKEN: ${{ secrets.GPR_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frpc-${{ env.VERSION }}
+          path: release/packages/
+          retention-days: 30
