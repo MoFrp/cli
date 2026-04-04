@@ -6,33 +6,79 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE ?= $(shell date -u +"%y%m%d")
 LDFLAGS := -s -w -X github.com/fatedier/frp/pkg/util/version.version=$(VERSION) -X github.com/fatedier/frp/pkg/util/version.commit=$(COMMIT) -X github.com/fatedier/frp/pkg/util/version.buildDate=$(BUILD_DATE)
 
-os-archs=darwin:amd64 darwin:arm64 freebsd:amd64 openbsd:amd64 linux:amd64 linux:arm:7 linux:arm:5 linux:arm64 windows:amd64 windows:arm64 linux:mips64 linux:mips64le linux:mips:softfloat linux:mipsle:softfloat linux:riscv64 linux:loong64 android:arm64
+TARGETS := darwin_amd64 darwin_arm64 freebsd_amd64 openbsd_amd64 linux_amd64 linux_arm_hf linux_arm linux_arm64 windows_amd64.exe windows_arm64.exe linux_mips64 linux_mips64le linux_mips_linux_mips_softfloat linux_mipsle_softfloat linux_riscv64 linux_loong64 android_arm64
+
+.PHONY: all build clean $(TARGETS)
 
 all: build
 
-build: app
+build: $(TARGETS)
 
-app:
-	@$(foreach n, $(os-archs), \
-		os=$(shell echo "$(n)" | cut -d : -f 1); \
-		arch=$(shell echo "$(n)" | cut -d : -f 2); \
-		extra=$(shell echo "$(n)" | cut -d : -f 3); \
-		flags=''; \
-		target_suffix=$${os}_$${arch}; \
-		if [ "$${os}" = "linux" ] && [ "$${arch}" = "arm" ] && [ "$${extra}" != "" ] ; then \
-			if [ "$${extra}" = "7" ]; then \
-				flags=GOARM=7; \
-				target_suffix=$${os}_arm_hf; \
-			elif [ "$${extra}" = "5" ]; then \
-				flags=GOARM=5; \
-				target_suffix=$${os}_arm; \
-			fi; \
-		elif [ "$${os}" = "linux" ] && ([ "$${arch}" = "mips" ] || [ "$${arch}" = "mipsle" ]) && [ "$${extra}" != "" ] ; then \
-		    flags=GOMIPS=$${extra}; \
+$(TARGETS):
+	@os=$(word 1,$(subst _, ,$@)); \
+	arch=$(word 2,$(subst _, ,$@)); \
+	extra=$(word 3,$(subst _, ,$@)); \
+	flags=''; \
+	target_suffix=$${os}_$${arch}; \
+	if [ "$${arch}" = "arm" ] && [ "$${extra}" = "hf" ]; then \
+		flags="GOARM=7"; \
+		target_suffix=$${os}_arm_hf; \
+	elif [ "$${arch}" = "arm" ] && [ -z "$${extra}" ]; then \
+		flags="GOARM=5"; \
+		target_suffix=$${os}_arm; \
+	elif [ "$${arch}" = "mips" ] || [ "$${arch}" = "mipsle" ]; then \
+		if [ -n "$${extra}" ]; then \
+			flags="GOMIPS=$${extra}"; \
 		fi; \
-		echo "Build frpc $${os}-$${arch}$${extra:+ ($${extra})}..."; \
-		env CGO_ENABLED=0 GOOS=$${os} GOARCH=$${arch} $${flags} go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_$${target_suffix} ./cmd/frpc; \
-		echo "Build frpc $${os}-$${arch}$${extra:+ ($${extra})} done"; \
-	)
-	@mv ./release/frpc_windows_amd64 ./release/frpc_windows_amd64.exe
-	@mv ./release/frpc_windows_arm64 ./release/frpc_windows_arm64.exe
+	fi; \
+	echo "Building frpc for $${os}-$${arch}$${extra:+ ($${extra})}..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=$${os} GOARCH=$${arch} $${flags} go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_$${target_suffix}$(suffix $@) ./cmd/frpc; \
+	echo "Done: frpc_$${target_suffix}$(suffix $@)"
+
+darwin_amd64 darwin_arm64 freebsd_amd64 openbsd_amd64 linux_amd64 linux_arm64 linux_mips64 linux_mips64le linux_riscv64 linux_loong64 android_arm64:
+	@os=$(word 1,$(subst _, ,$@)); \
+	arch=$(word 2,$(subst _, ,$@)); \
+	echo "Building frpc for $${os}-$${arch}..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=$${os} GOARCH=$${arch} go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_$${os}_$${arch} ./cmd/frpc; \
+	echo "Done: frpc_$${os}_$${arch}"
+
+linux_arm_hf:
+	@echo "Building frpc for linux-arm (hf)..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_linux_arm_hf ./cmd/frpc; \
+	echo "Done: frpc_linux_arm_hf"
+
+linux_arm:
+	@echo "Building frpc for linux-arm..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_linux_arm ./cmd/frpc; \
+	echo "Done: frpc_linux_arm"
+
+linux_mips_softfloat:
+	@echo "Building frpc for linux-mips (softfloat)..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=linux GOARCH=mips GOMIPS=softfloat go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_linux_mips ./cmd/frpc; \
+	echo "Done: frpc_linux_mips"
+
+linux_mipsle_softfloat:
+	@echo "Building frpc for linux-mipsle (softfloat)..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=linux GOARCH=mipsle GOMIPS=softfloat go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_linux_mipsle ./cmd/frpc; \
+	echo "Done: frpc_linux_mipsle"
+
+windows_amd64.exe:
+	@echo "Building frpc for windows-amd64..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_windows_amd64.exe ./cmd/frpc; \
+	echo "Done: frpc_windows_amd64.exe"
+
+windows_arm64.exe:
+	@echo "Building frpc for windows-arm64..."; \
+	mkdir -p release; \
+	env CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "$(LDFLAGS)" -tags "frpc,noweb" -o ./release/frpc_windows_arm64.exe ./cmd/frpc; \
+	echo "Done: frpc_windows_arm64.exe"
+
+clean:
+	rm -rf ./release

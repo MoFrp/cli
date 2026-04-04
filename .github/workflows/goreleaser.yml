@@ -40,9 +40,9 @@ jobs:
         run: |
           make frpc VERSION=${{ env.VERSION }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
 
-      - name: Cross compile frpc
+      - name: Cross compile frpc (parallel)
         run: |
-          make -f ./Makefile.cross-compiles VERSION=${{ env.VERSION }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
+          make -f ./Makefile.cross-compiles -j$(nproc) VERSION=${{ env.VERSION }} COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +"%y%m%d")
 
       - name: Package frpc
         run: |
