@@ -16,7 +16,15 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25'
-      - name: Make All
+      - name: Build frpc
+        run: |
+          make frpc
+
+      - name: Cross compile frpc
+        run: |
+          make -f ./Makefile.cross-compiles
+
+      - name: Package frpc
         run: |
           ./package.sh
 
