@@ -31,7 +31,7 @@ var (
 func init() {
 	quickstartCmd.Flags().StringVarP(&quickstartToken, "token", "t", "", "quickstart token (required)")
 	quickstartCmd.Flags().StringVarP(&quickstartMaster, "master", "m", "https://api.mofrp.moiu.cn", "master backend address")
-	quickstartCmd.MarkFlagRequired("token")
+	_ = quickstartCmd.MarkFlagRequired("token")
 	rootCmd.AddCommand(quickstartCmd)
 }
 
@@ -120,7 +120,7 @@ func runQuickstart(token, masterAddr string) error {
 		proxyCfgs = append(proxyCfgs, c.ProxyConfigurer)
 	}
 
-	var visitorCfgs []v1.VisitorConfigurer
+	visitorCfgs := make([]v1.VisitorConfigurer, 0, len(allCfg.Visitors))
 	for _, c := range allCfg.Visitors {
 		visitorCfgs = append(visitorCfgs, c.VisitorConfigurer)
 	}

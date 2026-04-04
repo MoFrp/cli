@@ -92,7 +92,7 @@ func NewRotateFileWriter(filePath string, maxDays int) (*RotateFileWriter, error
 
 func (w *RotateFileWriter) openFile() error {
 	var err error
-	w.file, err = os.OpenFile(w.filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	w.file, err = os.OpenFile(w.filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	return err
 }
 
@@ -140,8 +140,7 @@ func (w *RotateFileWriter) cleanupOldLogs(now time.Time) {
 		}
 
 		name := f.Name()
-		if strings.HasPrefix(name, base+".") {
-			dateStr := strings.TrimPrefix(name, base+".")
+		if dateStr, ok := strings.CutPrefix(name, base+"."); ok {
 			if len(dateStr) == 10 {
 				fileDate, err := time.Parse("2006-01-02", dateStr)
 				if err == nil && fileDate.Before(cutoffDate) {
