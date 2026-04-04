@@ -14,8 +14,26 @@
 
 package version
 
-var version = "0.68.0"
+import "fmt"
+
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
 
 func Full() string {
+	return fmt.Sprintf("MoFrp_%s_%s_%s", version, commit, buildDate)
+}
+
+func Version() string {
 	return version
+}
+
+func Commit() string {
+	return commit
+}
+
+func BuildDate() string {
+	return buildDate
 }

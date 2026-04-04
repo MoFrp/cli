@@ -17,7 +17,7 @@ package client
 import (
 	"net/http"
 
-	adminapi "github.com/fatedier/frp/client/http"
+	"github.com/fatedier/frp/client/api"
 	"github.com/fatedier/frp/client/proxy"
 	httppkg "github.com/fatedier/frp/pkg/util/http"
 	netpkg "github.com/fatedier/frp/pkg/util/net"
@@ -38,8 +38,6 @@ func (svr *Service) registerRouteHandlers(helper *httppkg.RouterRegisterHelper) 
 	subRouter.HandleFunc("/api/status", httppkg.MakeHTTPHandlerFunc(apiController.Status)).Methods(http.MethodGet)
 	subRouter.HandleFunc("/api/config", httppkg.MakeHTTPHandlerFunc(apiController.GetConfig)).Methods(http.MethodGet)
 	subRouter.HandleFunc("/api/config", httppkg.MakeHTTPHandlerFunc(apiController.PutConfig)).Methods(http.MethodPut)
-	subRouter.HandleFunc("/api/proxy/{name}/config", httppkg.MakeHTTPHandlerFunc(apiController.GetProxyConfig)).Methods(http.MethodGet)
-	subRouter.HandleFunc("/api/visitor/{name}/config", httppkg.MakeHTTPHandlerFunc(apiController.GetVisitorConfig)).Methods(http.MethodGet)
 
 	if svr.storeSource != nil {
 		subRouter.HandleFunc("/api/store/proxies", httppkg.MakeHTTPHandlerFunc(apiController.ListStoreProxies)).Methods(http.MethodGet)
@@ -67,9 +65,9 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func newAPIController(svr *Service) *adminapi.Controller {
+func newAPIController(svr *Service) *api.Controller {
 	manager := newServiceConfigManager(svr)
-	return adminapi.NewController(adminapi.ControllerParams{
+	return api.NewController(api.ControllerParams{
 		ServerAddr: svr.common.ServerAddr,
 		Manager:    manager,
 	})

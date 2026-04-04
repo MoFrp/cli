@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"runtime"
 	"sync"
@@ -93,6 +92,9 @@ type ServiceOptions struct {
 	//
 	// If it is not set, the default frpc implementation will be used.
 	HandleWorkConnCb func(*v1.ProxyBaseConfig, net.Conn, *msg.StartWorkConn) bool
+
+	// ConnectPublic is the public address that can be used to access the tunnel.
+	ConnectPublic string
 }
 
 // setServiceOptionsDefault sets the default values for ServiceOptions.
@@ -156,11 +158,23 @@ type Service struct {
 
 	connectorCreator func(context.Context, *v1.ClientCommonConfig) Connector
 	handleWorkConnCb func(*v1.ProxyBaseConfig, net.Conn, *msg.StartWorkConn) bool
+
+	// ConnectPublic is the public address that can be used to access the tunnel.
+	connectPublic string
 }
 
 func NewService(options ServiceOptions) (*Service, error) {
 	if err := setServiceOptionsDefault(&options); err != nil {
 		return nil, err
+	}
+
+	var webServer *httppkg.Server
+	if options.Common.WebServer.Port > 0 {
+		ws, err := httppkg.NewServer(options.Common.WebServer)
+		if err != nil {
+			return nil, err
+		}
+		webServer = ws
 	}
 
 	authRuntime, err := auth.BuildClientAuth(&options.Common.Auth)
@@ -183,17 +197,6 @@ func NewService(options ServiceOptions) (*Service, error) {
 	proxyCfgs = config.CompleteProxyConfigurers(proxyCfgs)
 	visitorCfgs = config.CompleteVisitorConfigurers(visitorCfgs)
 
-	// Create the web server after all fallible steps so its listener is not
-	// leaked when an earlier error causes NewService to return.
-	var webServer *httppkg.Server
-	if options.Common.WebServer.Port > 0 {
-		ws, err := httppkg.NewServer(options.Common.WebServer)
-		if err != nil {
-			return nil, err
-		}
-		webServer = ws
-	}
-
 	s := &Service{
 		ctx:              context.Background(),
 		auth:             authRuntime,
@@ -210,6 +213,7 @@ func NewService(options ServiceOptions) (*Service, error) {
 		storeSource:      storeSource,
 		connectorCreator: options.ConnectorCreator,
 		handleWorkConnCb: options.HandleWorkConnCb,
+		connectPublic:    options.ConnectPublic,
 	}
 
 	if webServer != nil {
@@ -232,26 +236,23 @@ func (svr *Service) Run(ctx context.Context) error {
 	}
 
 	if svr.vnetController != nil {
-		vnetController := svr.vnetController
 		if err := svr.vnetController.Init(); err != nil {
-			log.Errorf("init virtual network controller error: %v", err)
-			svr.stop()
+			log.Errorf("初始化虚拟网络控制器错误: %v", err)
 			return err
 		}
 		go func() {
-			log.Infof("virtual network controller start...")
-			if err := vnetController.Run(); err != nil && !errors.Is(err, net.ErrClosed) {
-				log.Warnf("virtual network controller exit with error: %v", err)
+			log.Infof("虚拟网络控制器启动...")
+			if err := svr.vnetController.Run(); err != nil {
+				log.Warnf("虚拟网络控制器退出错误: %v", err)
 			}
 		}()
 	}
 
 	if svr.webServer != nil {
-		webServer := svr.webServer
 		go func() {
-			log.Infof("admin server listen on %s", webServer.Address())
-			if err := webServer.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Warnf("admin server exit with error: %v", err)
+			log.Infof("管理服务监听 %s", svr.webServer.Address())
+			if err := svr.webServer.Run(); err != nil {
+				log.Warnf("管理服务退出错误: %v", err)
 			}
 		}()
 	}
@@ -261,8 +262,7 @@ func (svr *Service) Run(ctx context.Context) error {
 	if svr.ctl == nil {
 		cancelCause := cancelErr{}
 		_ = errors.As(context.Cause(svr.ctx), &cancelCause)
-		svr.stop()
-		return fmt.Errorf("login to the server failed: %v. With loginFailExit enabled, no additional retries will be attempted", cancelCause.Err)
+		return fmt.Errorf("登录服务器失败: %v", cancelCause.Err)
 	}
 
 	go svr.keepControllerWorking()
@@ -367,7 +367,7 @@ func (svr *Service) login() (conn net.Conn, connector Connector, err error) {
 	svr.runID = loginRespMsg.RunID
 	xl.AddPrefix(xlog.LogPrefix{Name: "runID", Value: svr.runID})
 
-	xl.Infof("login to server success, get run id [%s]", loginRespMsg.RunID)
+	xl.Infof("登录服务器成功，获取 run id [%s]", loginRespMsg.RunID)
 	return
 }
 
@@ -375,10 +375,10 @@ func (svr *Service) loopLoginUntilSuccess(maxInterval time.Duration, firstLoginE
 	xl := xlog.FromContextSafe(svr.ctx)
 
 	loginFunc := func() (bool, error) {
-		xl.Infof("try to connect to server...")
+		xl.Infof("尝试连接到服务器...")
 		conn, connector, err := svr.login()
 		if err != nil {
-			xl.Warnf("connect to server error: %v", err)
+			xl.Warnf("连接服务器失败: %v", err)
 			if firstLoginExit {
 				svr.cancel(cancelErr{Err: err})
 			}
@@ -400,11 +400,12 @@ func (svr *Service) loopLoginUntilSuccess(maxInterval time.Duration, firstLoginE
 			Auth:           svr.auth,
 			Connector:      connector,
 			VnetController: svr.vnetController,
+			ConnectPublic:  svr.connectPublic,
 		}
 		ctl, err := NewControl(svr.ctx, sessionCtx)
 		if err != nil {
 			conn.Close()
-			xl.Errorf("new control error: %v", err)
+			xl.Errorf("创建控制器错误: %v", err)
 			return false, err
 		}
 		ctl.SetInWorkConnCallback(svr.handleWorkConnCb)
@@ -504,10 +505,6 @@ func (svr *Service) stop() {
 		svr.webServer.Close()
 		svr.webServer = nil
 	}
-	if svr.vnetController != nil {
-		_ = svr.vnetController.Stop()
-		svr.vnetController = nil
-	}
 }
 
 func (svr *Service) getProxyStatus(name string) (*proxy.WorkingStatus, bool) {
@@ -519,17 +516,6 @@ func (svr *Service) getProxyStatus(name string) (*proxy.WorkingStatus, bool) {
 		return nil, false
 	}
 	return ctl.pm.GetProxyStatus(name)
-}
-
-func (svr *Service) getVisitorCfg(name string) (v1.VisitorConfigurer, bool) {
-	svr.ctlMu.RLock()
-	ctl := svr.ctl
-	svr.ctlMu.RUnlock()
-
-	if ctl == nil {
-		return nil, false
-	}
-	return ctl.vm.GetVisitorCfg(name)
 }
 
 func (svr *Service) StatusExporter() StatusExporter {
