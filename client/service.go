@@ -21,6 +21,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -378,6 +379,16 @@ func (svr *Service) loopLoginUntilSuccess(maxInterval time.Duration, firstLoginE
 		xl.Infof("尝试连接到服务器...")
 		conn, connector, err := svr.login()
 		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "隧道不存在") ||
+				strings.Contains(errStr, "认证失败") ||
+				strings.Contains(errStr, "已被删除") ||
+				strings.Contains(errStr, "已被暂停") ||
+				strings.Contains(errStr, "tunnel not found") {
+				xl.Errorf("隧道不可用，停止重连: %v", err)
+				svr.cancel(cancelErr{Err: err})
+				return false, err
+			}
 			xl.Warnf("连接服务器失败: %v", err)
 			if firstLoginExit {
 				svr.cancel(cancelErr{Err: err})
