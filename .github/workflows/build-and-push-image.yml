@@ -52,8 +52,10 @@ jobs:
           VERSION=${VERSION#v}
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           BUILD_DATE=$(date -u +"%y%m%d")
+          COMMIT=$(echo ${{ github.sha }} | cut -c1-7)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
+          echo "COMMIT=$COMMIT" >> $GITHUB_ENV
           echo "TAG_CLI=${REPO_OWNER}/cli:${VERSION}" >> $GITHUB_ENV
           echo "TAG_CLI_GPR=ghcr.io/${REPO_OWNER}/cli:${VERSION}" >> $GITHUB_ENV
 
@@ -66,7 +68,7 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ env.VERSION }}
-            COMMIT=${{ github.sha }}
+            COMMIT=${{ env.COMMIT }}
             BUILD_DATE=${{ env.BUILD_DATE }}
           tags: |
             ${{ env.TAG_CLI }}
