@@ -71,7 +71,7 @@ func runQuickstart(token, masterAddr string) error {
 
 	url := fmt.Sprintf("%s/api/v1/frpc/config?token=%s&tunnel_id=%s", masterAddr, actualToken, tunnelID)
 
-	log.Infof("正在从主控获取配置: %s", masterAddr)
+	log.Infof("正在从主控获取配置")
 
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 	resp, err := httpClient.Get(url)
